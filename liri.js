@@ -1,3 +1,4 @@
+
 require("dotenv").config();
 var keys = require("./keys.js");
 var Spotify = require("node-spotify-api");
@@ -8,17 +9,14 @@ var fs = require("fs");
 
 //original input of user
 var userInput = process.argv.slice(2);
-
 //copy of the user input so that it can be manipulated with
 var userInputCopy = process.argv.slice(2);
-
 var stringArray = [];
-// createInfo(userInputCopy);
-
-// function createInfo(input){};
 var operation = userInputCopy[0];
-userInputCopy.splice(0,1);
+userInputCopy.shift();
 var searchText = userInputCopy;
+var flag = false;
+
 
 var concertObject = {
   Venue: "",
@@ -62,7 +60,6 @@ function chooseOperation(decisions, searches){
       break;
     
     case "do-what-it-says":
-      console.log("do what it says", decisions);
       doThis();
       break;
 
@@ -73,9 +70,10 @@ function concert(text){
   if (text.length !== 0 && typeof(text) === "object"){
     bandName = text.join(" ");
   } else if (typeof (text) === "string") {
+    text = text.replace(/"/g,"");
     bandName = text;
   }
-  console.log(bandName);
+  
   axios({
     method: "GET",
     url: "https://rest.bandsintown.com/artists/" + bandName + "/events?app_id="+ process.env.BiT
@@ -88,6 +86,7 @@ function concert(text){
       };
       console.log(printInfo(concertObject));
     }
+    flag = false;
   })
 }
 
@@ -122,6 +121,7 @@ function song(text) {
         }
         console.log(printInfo(songObject));
       }
+      flag = false;
     }
   })
 }
@@ -150,11 +150,8 @@ function movie(text) {
       Plot: response.Plot,
       Actors: response.Actors
     }
-
     console.log(printInfo(movieObject));
-    // return text;
-    // console.log(movieObject);
-
+    flag = false;
   })
 }
 
@@ -164,31 +161,44 @@ function doThis() {
       return console.log(err);
     }
     data = data.replace(/[\r\n]/gm," ");
-    data = data.replace(/  +/g,",")
-    // console.log(data);
-    var text = data.split(",")
-    // console.log(text);
+    data = data.replace(/  +/g,",");
+    var text = data.split(",");
 
-    for(var i = 0; i < text.length; i++){
-      chooseOperation(text[0],text[1]);
-      console.log(text[0],text[1]);
-      // console.log(text);
+    while(text.length != 0){
+      chooseOperation(text[0], text[1]);
       text.shift();
       text.shift();
-      i = 0;
-      // console.log(text, text.length, i);
     }
   })
 }
 
+//
+function logData(whatIsLove, babyDontHurtMe, noMore){  
+  if (flag === false){
+    var text = whatIsLove + "," + babyDontHurtMe.join(" ") + "\n";
+    fs.appendFile("log.txt", text, function (err) {
+      if (err) {
+        console.log(err);
+      }
+    })
+  } else {
+    var text1 = noMore + "\n";
+    fs.appendFile("log.txt", text1, function (err) {
+      if (err) {
+        console.log(err);
+      }
+    })
+  }
+  flag = true;
+}
+
 function printInfo(data){
-  
   var stringBuilder = "";
   for(key in data){
     stringBuilder += (key + ": " + data[key] + "\n");
 
   }
+  logData(operation, searchText, stringBuilder);
   stringArray.push(stringBuilder);
-  // console.log(stringArray.length);
   return stringBuilder;
 }
