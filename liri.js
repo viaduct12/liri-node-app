@@ -1,23 +1,29 @@
+
 require("dotenv").config();
 var keys = require("./keys.js");
 var Spotify = require("node-spotify-api");
 var spotify = new Spotify(keys.spotify);
 var axios = require("axios");
+var moment = require('moment');
+var fs = require("fs");
 
 //original input of user
 var userInput = process.argv.slice(2);
-
 //copy of the user input so that it can be manipulated with
 var userInputCopy = process.argv.slice(2);
-
-// createInfo(userInputCopy);
-
-// function createInfo(input){};
+var stringArray = [];
 var operation = userInputCopy[0];
-userInputCopy.splice(0,1);
+userInputCopy.shift();
 var searchText = userInputCopy;
+var flag = false;
 
-var concertObject = {};
+
+var concertObject = {
+  Venue: "",
+  Location: "",
+  Date: ""
+};
+
 var songObject = {
   "Artist(s)": "",
   "Song Name": "",
@@ -36,79 +42,96 @@ var movieObject = {
   Actors: ""
 };
 
+chooseOperation(operation, searchText);
 
-switch (operation) {
+function chooseOperation(decisions, searches){
+  switch (decisions) {
 
-  case "concert-this":
-    console.log("concert this", operation);
-    concert(searchText);
-    break;
+    case "concert-this":
+      concert(searches);
+      break;
 
-  case "spotify-this-song":
-    console.log("spotify this song", operation);
-    console.log(searchText);
-    song(searchText);
-    break;
+    case "spotify-this-song":
+      song(searches);
+      break;
 
-  case "movie-this":
-    // console.log("move this", operation);
-    console.log(movie(searchText));
-    break;
-  
-  case "do-what-it-says":
-    console.log("do what it says", operation);
-    doThis(searchText);
-    break;
+    case "movie-this":
+      movie(searches);
+      break;
+    
+    case "do-what-it-says":
+      doThis();
+      break;
 
+  }
 }
-
 function concert(text){
+  var bandName = "A Static Lullaby";
+  if (text.length !== 0 && typeof(text) === "object"){
+    bandName = text.join(" ");
+  } else if (typeof (text) === "string") {
+    text = text.replace(/"/g,"");
+    bandName = text;
+  }
   
+  axios({
+    method: "GET",
+    url: "https://rest.bandsintown.com/artists/" + bandName + "/events?app_id="+ process.env.BiT
+  }).then(concert => {
+    for(var i = 0; i < concert.data.length; i++){
+      concertObject = {
+        Venue: concert.data[i].venue.name,
+        Location: concert.data[i].venue.city + ", " + concert.data[i].venue.country,
+        Date: moment(concert.data[i].datetime).format("L")
+      };
+      console.log(printInfo(concertObject));
+    }
+    flag = false;
+  })
 }
 
 function song(text) {
   var songName = "The Sign"
-  if (text.length !== 0) {
-    songName = text.join(" ");
-  }
 
-  console.log(songName);
-  spotify.search({ type: 'track', query: songName }, function (err, data) {
+  if (text.length !== 0 && typeof(text) === "object") {
+    songName = text.join(" ");
+  } else if (typeof(text) === "string"){
+    songName = text;
+  }
+  spotify.search({ type: 'track', query: songName }, async function (err, data) { 
     if (err) {
       return console.log('Error occurred: ' + err);
     } else {
-      // console.log(data.tracks);
-      // console.log(data.tracks.items[0].album.name);
-      // var artistName = [];
       for(var i = 0; i < data.tracks.items.length; i++){
-        // console.log("crap " + i);
         var itemsArray = data.tracks.items[i];
-        songObject = {
-          "Song Name": data.tracks.items[i].name,
-          "Preview Link": data.tracks.items[i].preview_url,
-          Album: data.tracks.items[i].album.name
-        }
         var tempArtist = "";
 
         for(var j= 0; j < itemsArray.artists.length; j++){
-          // artistName.push(itemsArray.artists[j].name);
-          tempArtist += itemsArray.artists[j].name + ", ";
-          songObject = {
-            "Artist(s)" : tempArtist
+          if (j < itemsArray.artists.length - 1){          
+            tempArtist += itemsArray.artists[j].name + ", ";
+          } else if (j === itemsArray.artists.length -1){
+            tempArtist += itemsArray.artists[j].name;
+            songObject = {
+              "Artist(s)" : tempArtist,
+              "Song Name": data.tracks.items[i].name,
+              "Preview Link": data.tracks.items[i].preview_url,
+              Album: data.tracks.items[i].album.name 
+            }
           }
-        };
-        console.log(songObject);
-        // printInfo(songObject);
+        }
+        console.log(printInfo(songObject));
       }
-      // console.log(artistName);
+      flag = false;
     }
   })
 }
 
 function movie(text) {
   var movieName = "Mr.+Nobody"
-  if(text.length !== 0){
+  if(text.length !== 0 && typeof(text) === "object"){
     movieName = text.join("+");
+  } else if (typeof(text) === "string") {
+    movieName = text;
   }
   
   axios({
@@ -127,24 +150,55 @@ function movie(text) {
       Plot: response.Plot,
       Actors: response.Actors
     }
-
-    var text = printInfo(movieObject);
-    return text;
-    // console.log(movieObject);
-
+    console.log(printInfo(movieObject));
+    flag = false;
   })
 }
 
-function doThis(text) {
+function doThis() {
+  fs.readFile("random.txt", "utf8", function(err, data){
+    if(err){
+      return console.log(err);
+    }
+    data = data.replace(/[\r\n]/gm," ");
+    data = data.replace(/  +/g,",");
+    var text = data.split(",");
 
+    while(text.length != 0){
+      chooseOperation(text[0], text[1]);
+      text.shift();
+      text.shift();
+    }
+  })
+}
+
+//
+function logData(whatIsLove, babyDontHurtMe, noMore){  
+  if (flag === false){
+    var text = whatIsLove + "," + babyDontHurtMe.join(" ") + "\n";
+    fs.appendFile("log.txt", text, function (err) {
+      if (err) {
+        console.log(err);
+      }
+    })
+  } else {
+    var text1 = noMore + "\n";
+    fs.appendFile("log.txt", text1, function (err) {
+      if (err) {
+        console.log(err);
+      }
+    })
+  }
+  flag = true;
 }
 
 function printInfo(data){
-  // console.log(Object.keys(data), "i'm in printinfo", Object.values(data));
   var stringBuilder = "";
   for(key in data){
     stringBuilder += (key + ": " + data[key] + "\n");
 
   }
+  logData(operation, searchText, stringBuilder);
+  stringArray.push(stringBuilder);
   return stringBuilder;
 }
