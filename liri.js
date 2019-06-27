@@ -139,7 +139,7 @@ function movie(text) {
     url: "http://www.omdbapi.com/?t=" + movieName + "&y=&plot=short&apikey=" + process.env.OMDB_ID
   }).then(movie => {
     var response = movie.data;
-    // console.log(response);
+
     movieObject = {
       Title: response.Title,
       Year: response.Year,
@@ -151,6 +151,7 @@ function movie(text) {
       Actors: response.Actors
     }
     console.log(printInfo(movieObject));
+    printInfo(movieObject);
     flag = false;
   })
 }
@@ -194,10 +195,11 @@ function logData(whatIsLove, babyDontHurtMe, noMore){
 
 function printInfo(data){
   var stringBuilder = "";
+
   for(key in data){
     stringBuilder += (key + ": " + data[key] + "\n");
-
   }
+  
   logData(operation, searchText, stringBuilder);
   stringArray.push(stringBuilder);
   return stringBuilder;
