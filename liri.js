@@ -179,8 +179,6 @@ function movie(text) {
     }
     //converts the object into a readible string in the printInfo function
     console.log(printInfo(movieObject));
-    //just brute forcing so that it can log the information in the txt
-    printInfo(movieObject);
     flag = false;
   })
 }
@@ -224,15 +222,14 @@ function logData(whatIsLove, babyDontHurtMe, noMore){
         console.log(err);
       }
     })
-  } else {
-    var text1 = noMore + "\n";
-    fs.appendFile("log.txt", text1, function (err) {
-    //if an error occurs it will output it
-      if (err) {
-        console.log(err);
-      }
-    })
   }
+  var text1 = noMore + "\n";
+  fs.appendFile("log.txt", text1, function (err) {
+  //if an error occurs it will output it
+    if (err) {
+      console.log(err);
+    }
+  })
   flag = true;
 }
 //wanted to make a stringBuilder similiar to one in java
